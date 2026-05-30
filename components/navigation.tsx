@@ -2,16 +2,10 @@
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { User, Menu, X, Sparkles } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
-import { useSubscription } from "@/contexts/subscription-context"
+import { Menu, X, Sparkles } from "lucide-react"
 import { useState } from "react"
 
 export function Navigation() {
-  const pathname = usePathname()
-  const { user, isLoading } = useAuth()
-  const { isPro } = useSubscription()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
@@ -27,7 +21,7 @@ export function Navigation() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-semibold">8x Template</span>
+              <span className="font-semibold">RIZZ AI</span>
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -41,45 +35,13 @@ export function Navigation() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="border-t border-border/50 px-6 py-4 space-y-4">
-            {!isLoading && (
-              <>
-                {user ? (
-                  <>
-                    <Link
-                      href="/profile"
-                      className="block py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Profile
-                    </Link>
-                    {!isPro && (
-                      <Link
-                        href="/upgrade"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Button className="w-full">Upgrade to Pro</Button>
-                      </Link>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/upgrade"
-                      className="block py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Pricing
-                    </Link>
-                    <Link
-                      href="/auth/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Button className="w-full">Sign In</Button>
-                    </Link>
-                  </>
-                )}
-              </>
-            )}
+            <Link
+              href="/"
+              className="block py-2 text-sm text-muted-foreground"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Reply Generator
+            </Link>
           </div>
         )}
       </nav>
@@ -95,45 +57,12 @@ export function Navigation() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-semibold text-lg">8x Template</span>
+              <span className="font-semibold text-lg">RIZZ AI</span>
             </Link>
-
-            <div className="flex items-center gap-6">
-              {!isLoading && (
-                <>
-                  {user ? (
-                    <div className="flex items-center gap-4">
-                      <Link
-                        href="/profile"
-                        className={`transition-colors ${
-                          pathname === "/profile" ? "text-primary" : "text-foreground/80 hover:text-foreground"
-                        }`}
-                        title="Profile"
-                      >
-                        <User className="w-5 h-5" />
-                      </Link>
-                      {!isPro && (
-                        <Link href="/upgrade">
-                          <Button variant="outline" size="sm" className="text-sm bg-transparent">
-                            Upgrade
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <Link href="/upgrade">
-                        <Button variant="ghost" size="sm" className="text-sm">
-                          Pricing
-                        </Button>
-                      </Link>
-                      <Button size="sm" className="text-sm" asChild>
-                        <Link href="/auth/login">Sign In</Link>
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="text-sm bg-transparent" asChild>
+                <Link href="/">Reply Generator</Link>
+              </Button>
             </div>
           </div>
         </div>

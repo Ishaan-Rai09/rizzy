@@ -1,8 +1,8 @@
-import { createAnthropicClient } from "@/lib/anthropic"
+import { GROQ_API_URL, getGroqApiKey } from "@/lib/groq"
 
 export const runtime = "nodejs"
 
-const MODEL = "claude-sonnet-4-20250514"
+const MODEL = "llama-3.3-70b-versatile"
 
 function buildReplySystemPrompt(params: {
   tone: string
@@ -37,20 +37,13 @@ Format: 150-CHAR BIO: [bio] | 300-CHAR BIO: [bio]
 Sound like a real person, not a resume.`
 }
 
-function getTextContent(content: unknown) {
-  if (!Array.isArray(content)) {
+function getTextContent(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
     return ""
   }
 
-  return content
-    .map((block) => {
-      if (block && typeof block === "object" && "text" in block) {
-        return String((block as { text: string }).text)
-      }
-      return ""
-    })
-    .join("")
-    .trim()
+  const message = (payload as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message
+  return message?.content?.trim() ?? ""
 }
 
 export async function POST(request: Request) {
@@ -61,8 +54,6 @@ export async function POST(request: Request) {
     if (!mode || !tone) {
       return new Response("Missing mode or tone.", { status: 400 })
     }
-
-    const client = createAnthropicClient()
 
     let systemPrompt = ""
     let userMessage = ""
@@ -88,14 +79,30 @@ export async function POST(request: Request) {
       return new Response("Unsupported mode.", { status: 400 })
     }
 
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 600,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
+    const response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getGroqApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        temperature: 0.9,
+        max_tokens: 600,
+      }),
     })
 
-    const text = getTextContent(response.content)
+    const payload = await response.json()
+    if (!response.ok) {
+      const message = (payload as { error?: { message?: string } }).error?.message
+      return new Response(message || "Groq request failed.", { status: response.status })
+    }
+
+    const text = getTextContent(payload)
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       start(controller) {
