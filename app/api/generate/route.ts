@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     }
 
     const ip = getClientIp(request)
-    const userKey = (session.user?.email || session.user?.id || "anonymous").toString()
+    const userKey = (session.user?.email || "anonymous").toString()
     const rateLimitKey = `${userKey}:${ip}`
     const rateLimitResult = checkRateLimit(rateLimitKey)
     if (!rateLimitResult.allowed) {
