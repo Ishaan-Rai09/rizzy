@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist } from "next/font/google"
 import { Toaster } from "react-hot-toast"
+import { AppSessionProvider } from "@/components/session-provider"
 import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"] })
@@ -26,9 +27,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geist.className} antialiased flex flex-col min-h-screen`}>
-        <div className="flex-1 flex flex-col">
-          {children}
-        </div>
+        <AppSessionProvider>
+          <div className="flex-1 flex flex-col">
+            {children}
+          </div>
+        </AppSessionProvider>
         <Toaster
           position="top-center"
           toastOptions={{

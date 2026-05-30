@@ -1,285 +1,249 @@
-"use client"
-
-import { useMemo, useState } from "react"
-import { ToneSelector, ToneOption } from "@/components/ToneSelector"
-import { ConversationInput } from "@/components/ConversationInput"
-import { ReplyCard } from "@/components/ReplyCard"
-import { LoadingSkeleton } from "@/components/LoadingSkeleton"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { parseOptions } from "@/lib/parseOptions"
-import { AnimatePresence, motion } from "framer-motion"
-import toast from "react-hot-toast"
-import { OpenerTab } from "@/components/OpenerTab"
-import { BioTab } from "@/components/BioTab"
-import { ArrowRight, Sparkles } from "lucide-react"
+import { ArrowRight, Check, Sparkles, Shield, Zap } from "lucide-react"
 
-const toneOptions: ToneOption[] = [
-  { label: "Funny", value: "Funny", emoji: "😂" },
-  { label: "Flirty", value: "Flirty", emoji: "😏" },
-  { label: "Confident", value: "Confident", emoji: "💪" },
-  { label: "Direct", value: "Direct", emoji: "🎯" },
+const features = [
+  {
+    title: "Real replies, not robotic",
+    description: "Human-sounding options that feel confident and natural, never corporate.",
+  },
+  {
+    title: "Context-aware tone shifts",
+    description: "Funny, flirty, confident, or direct - the vibe actually changes.",
+  },
+  {
+    title: "Secure access",
+    description: "Sign in with Google to unlock replies and keep your sessions synced."
+  },
 ]
 
-const platformOptions = ["Tinder", "Hinge", "Bumble", "Instagram", "Other"]
+const steps = [
+  {
+    title: "Paste the convo",
+    description: "Drop in your chat with their last message at the end.",
+  },
+  {
+    title: "Set the vibe",
+    description: "Pick a tone and add quick context for better personalization.",
+  },
+  {
+    title: "Pick your winner",
+    description: "Copy a reply or regenerate a single card until it lands.",
+  },
+]
 
-type TabKey = "reply" | "opener" | "bio"
+const pricing = [
+  {
+    name: "Free",
+    price: "$0",
+    tag: "Starter",
+    perks: ["Reply, opener, bio generators", "Tone selector", "Copy with toasts"],
+  },
+  {
+    name: "Pro",
+    price: "$12",
+    tag: "Power",
+    perks: ["Faster generations", "Priority models", "Early access features"],
+  },
+]
 
-export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("reply")
-  const [conversation, setConversation] = useState("")
-  const [aboutMe, setAboutMe] = useState("")
-  const [aboutThem, setAboutThem] = useState("")
-  const [platform, setPlatform] = useState("Tinder")
-  const [tone, setTone] = useState("Funny")
-  const [replies, setReplies] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
+const faqs = [
+  {
+    q: "Does it sound generic?",
+    a: "No. The prompts are tuned for short, human replies with real tone shifts.",
+  },
+  {
+    q: "Do I need an account?",
+    a: "Yes. We use Google sign-in to keep the experience fast and secure.",
+  },
+  {
+    q: "Can I use this on any dating app?",
+    a: "Yes. Pick the platform to nudge the phrasing style.",
+  },
+]
 
-  const isConversationEmpty = useMemo(
-    () => conversation.trim().length === 0,
-    [conversation]
-  )
-
-  const handleGenerateReplies = async () => {
-    if (isConversationEmpty) {
-      toast.error("Paste a conversation first.")
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "reply",
-          tone,
-          conversation,
-          aboutMe,
-          aboutThem,
-          platform,
-        }),
-      })
-
-      const text = await response.text()
-      if (!response.ok) {
-        throw new Error(text || "Failed to generate replies.")
-      }
-
-      const options = parseOptions(text)
-      setReplies(options)
-    } catch (error) {
-      toast.error("Could not generate replies. Try again.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success("Copied! 🔥")
-    } catch (error) {
-      toast.error("Copy failed. Try again.")
-    }
-  }
-
-  const handleRegenerate = async (index: number) => {
-    setRegeneratingIndex(index)
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "reply",
-          tone,
-          conversation,
-          aboutMe,
-          aboutThem,
-          platform,
-        }),
-      })
-
-      const text = await response.text()
-      if (!response.ok) {
-        throw new Error(text || "Failed to regenerate.")
-      }
-
-      const [replacement] = parseOptions(text)
-      if (replacement) {
-        setReplies((prev) => prev.map((item, idx) => (idx === index ? replacement : item)))
-      }
-    } catch (error) {
-      toast.error("Could not regenerate. Try again.")
-    } finally {
-      setRegeneratingIndex(null)
-    }
-  }
-
+export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="relative overflow-hidden">
-        <div className="absolute -top-40 left-10 h-72 w-72 rounded-full bg-primary/20 blur-[120px]" />
-        <div className="absolute top-20 right-10 h-80 w-80 rounded-full bg-primary/10 blur-[140px]" />
-        <div className="container mx-auto px-6 py-14">
-          <div className="flex flex-col gap-10">
-            <header className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                <Sparkles className="size-4 text-primary" />
-                RIZZ AI
-              </div>
-              <div className="max-w-3xl space-y-4">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground">
-                  Turn awkward chats into confident, human replies.
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                  Paste the convo, set the vibe, and get three tailored replies, openers, or bios in seconds.
-                </p>
-              </div>
-            </header>
+        <div className="pointer-events-none absolute -top-48 right-[-120px] h-[420px] w-[420px] rounded-full bg-primary/20 blur-[160px]" />
+        <div className="pointer-events-none absolute top-40 left-[-120px] h-[320px] w-[320px] rounded-full bg-primary/10 blur-[140px]" />
 
-            <div className="flex flex-wrap gap-3">
-              {([
-                { key: "reply", label: "Reply" },
-                { key: "opener", label: "Opener" },
-                { key: "bio", label: "Bio" },
-              ] as { key: TabKey; label: string }[]).map((tab) => {
-                const isActive = activeTab === tab.key
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={
-                      isActive
-                        ? "rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
-                        : "rounded-full border border-border/70 bg-card/70 px-5 py-2 text-sm text-muted-foreground hover:text-foreground"
-                    }
-                  >
-                    {tab.label}
-                  </button>
-                )
-              })}
+        <header className="container mx-auto px-6 py-8 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="size-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+              <Sparkles className="size-5 text-primary" />
+            </div>
+            <span className="text-sm font-semibold tracking-[0.3em] text-muted-foreground">RIZZ AI</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/login">Log in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/signup">Sign up</Link>
+            </Button>
+          </div>
+        </header>
+
+        <section className="container mx-auto px-6 py-16">
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                <Zap className="size-4 text-primary" />
+                Real-time dating assistant
+              </div>
+              <h1 className="text-5xl sm:text-6xl font-semibold leading-tight">
+                Make every reply feel intentional, confident, and you.
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                RIZZ AI turns raw convos into smooth reply options, punchy openers, and bios that feel like a real person.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Button size="lg" asChild>
+                  <Link href="/login">
+                    Sign in to start
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" className="bg-transparent" asChild>
+                  <Link href="/login">Continue with Google</Link>
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2"><Shield className="size-4 text-primary" /> No cringe output</span>
+                <span className="inline-flex items-center gap-2"><Sparkles className="size-4 text-primary" /> 3 replies every run</span>
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-border/70 bg-card/60 p-6 sm:p-8 shadow-2xl shadow-black/30">
-              {activeTab === "reply" ? (
-                <div className="space-y-8">
-                  <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                    <ConversationInput
-                      label="Paste your chat here (their message last)"
-                      placeholder="You: Had a fun weekend?\nThem: Totally. Went hiking in Malibu..."
-                      value={conversation}
-                      onChange={setConversation}
-                      onClear={() => setConversation("")}
-                    />
-
-                    <div className="rounded-2xl border border-border/70 bg-card/70 p-6 space-y-6">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Context panel</p>
-                        <h3 className="text-lg font-semibold text-foreground">Add quick context</h3>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm text-muted-foreground">About you</label>
-                          <textarea
-                            value={aboutMe}
-                            onChange={(event) => setAboutMe(event.target.value)}
-                            placeholder="2-3 sentences about you"
-                            rows={3}
-                            className="w-full rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-muted-foreground">About them (optional)</label>
-                          <textarea
-                            value={aboutThem}
-                            onChange={(event) => setAboutThem(event.target.value)}
-                            placeholder="What you know about them"
-                            rows={3}
-                            className="w-full rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm text-muted-foreground">Platform</label>
-                          <Select value={platform} onValueChange={setPlatform}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {platformOptions.map((option) => (
-                                <SelectItem key={option} value={option}>
-                                  {option}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
+            <div className="relative">
+              <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-2xl shadow-black/30">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    <span>Live preview</span>
+                    <span>Funny tone</span>
                   </div>
-
-                  <div className="flex flex-col gap-6">
-                    <ToneSelector
-                      label="Tone selector"
-                      options={toneOptions}
-                      value={tone}
-                      onChange={setTone}
-                    />
-                    <div className="flex flex-wrap gap-3">
-                      <Button type="button" size="lg" onClick={handleGenerateReplies} disabled={isLoading}>
-                        Generate Replies
-                        <ArrowRight className="size-4" />
-                      </Button>
-                    </div>
+                  <div className="rounded-2xl border border-border/60 bg-background/60 p-4 space-y-3">
+                    <p className="text-sm text-muted-foreground">Them: You seem like trouble.</p>
+                    <p className="text-sm">You: Only the fun kind. Want to see for yourself?</p>
                   </div>
-
-                  <div className="space-y-4">
-                    {isLoading ? (
-                      <LoadingSkeleton />
-                    ) : replies.length > 0 ? (
-                      <AnimatePresence>
-                        <div className="grid gap-4">
-                          {replies.map((reply, index) => (
-                            <motion.div
-                              key={`${reply}-${index}`}
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 8 }}
-                              transition={{ duration: 0.3, delay: index * 0.05 }}
-                            >
-                              <ReplyCard
-                                text={reply}
-                                onCopy={() => handleCopy(reply)}
-                                onRegenerate={() => handleRegenerate(index)}
-                                isRegenerating={regeneratingIndex === index}
-                              />
-                            </motion.div>
-                          ))}
-                        </div>
-                      </AnimatePresence>
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-border/70 bg-background/30 p-8 text-center text-sm text-muted-foreground">
-                        Paste a conversation and generate replies to see them here.
+                  <div className="grid gap-3">
+                    {[
+                      "I come with a warning label and great playlist choices.",
+                      "Only guilty of stealing fries. Want evidence?",
+                      "Define trouble... and how much you're into it.",
+                    ].map((line) => (
+                      <div key={line} className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3 text-sm">
+                        {line}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
-              ) : null}
-
-              {activeTab === "opener" ? <OpenerTab /> : null}
-              {activeTab === "bio" ? <BioTab /> : null}
+              </div>
+              <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-[80px]" />
             </div>
           </div>
-        </div>
+        </section>
       </div>
+
+      <section className="container mx-auto px-6 py-16">
+        <div className="grid gap-6 md:grid-cols-3">
+          {features.map((feature) => (
+            <div key={feature.title} className="rounded-2xl border border-border/60 bg-card/70 p-6">
+              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+              <p className="text-sm text-muted-foreground">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="container mx-auto px-6 py-16">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] items-center">
+          <div className="space-y-4">
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">How it works</p>
+            <h2 className="text-4xl font-semibold">Three steps to smooth replies</h2>
+            <p className="text-muted-foreground">
+              Dial in the vibe, personalize with quick context, and keep the chat flowing.
+            </p>
+            <Button variant="outline" className="bg-transparent" asChild>
+              <Link href="/login">Open the generator</Link>
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {steps.map((step, index) => (
+              <div key={step.title} className="rounded-2xl border border-border/60 bg-card/70 p-5 flex gap-4">
+                <div className="size-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-semibold">
+                  {index + 1}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground">{step.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-6 py-16">
+        <div className="grid gap-6 md:grid-cols-2">
+          {pricing.map((plan) => (
+            <div key={plan.name} className="rounded-3xl border border-border/60 bg-card/80 p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.25em] text-muted-foreground">{plan.tag}</p>
+                  <h3 className="text-3xl font-semibold mt-2">{plan.name}</h3>
+                </div>
+                <div className="text-3xl font-semibold text-primary">{plan.price}</div>
+              </div>
+              <div className="mt-6 space-y-3">
+                {plan.perks.map((perk) => (
+                  <div key={perk} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="size-4 text-primary" />
+                    {perk}
+                  </div>
+                ))}
+              </div>
+              <Button className="mt-6" variant={plan.name === "Pro" ? "default" : "outline"} asChild>
+                <Link href="/login">{plan.name === "Pro" ? "Go Pro" : "Get Started"}</Link>
+              </Button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="container mx-auto px-6 py-16">
+        <div className="rounded-3xl border border-border/60 bg-card/80 p-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">FAQ</p>
+            <h2 className="text-4xl font-semibold mt-3">Questions, answered</h2>
+            <p className="text-muted-foreground mt-4">Everything you need to know before you hit send.</p>
+          </div>
+          <div className="space-y-4">
+            {faqs.map((item) => (
+              <div key={item.q} className="rounded-2xl border border-border/60 bg-background/40 p-5">
+                <h3 className="font-semibold">{item.q}</h3>
+                <p className="text-sm text-muted-foreground mt-2">{item.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-6 pb-20">
+        <div className="rounded-3xl border border-border/60 bg-primary/10 p-10 text-center space-y-4">
+          <h2 className="text-4xl font-semibold">Ready to sound like you?</h2>
+          <p className="text-muted-foreground">Jump into the generator or sign in to save your sessions.</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button size="lg" asChild>
+              <Link href="/login">Start now</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="bg-transparent" asChild>
+              <Link href="/signup">Sign up with Google</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
