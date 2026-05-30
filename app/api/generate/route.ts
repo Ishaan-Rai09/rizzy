@@ -1,8 +1,48 @@
 import { GROQ_API_URL, getGroqApiKey } from "@/lib/groq"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
+import { z } from "zod"
 
 export const runtime = "nodejs"
 
 const MODEL = "llama-3.3-70b-versatile"
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX = 8
+const RATE_LIMIT_BURST_MAX = 3
+const RATE_LIMIT_BURST_WINDOW_MS = 10_000
+const rateLimit = new Map<string, { count: number; resetAt: number; burstCount: number; burstResetAt: number }>()
+
+const ReplySchema = z.object({
+  mode: z.literal("reply"),
+  tone: z.string().min(1).max(32),
+  conversation: z.string().min(1).max(4000),
+  aboutMe: z.string().max(600).optional(),
+  aboutThem: z.string().max(600).optional(),
+  platform: z.string().max(32).optional(),
+})
+
+const OpenerSchema = z.object({
+  mode: z.literal("opener"),
+  tone: z.string().min(1).max(32),
+  profile: z.string().min(1).max(2000),
+})
+
+const BioPromptsSchema = z
+  .object({
+    jobVibe: z.string().max(200).optional(),
+    hobbies: z.string().max(200).optional(),
+    lookingFor: z.string().max(200).optional(),
+    funFact: z.string().max(200).optional(),
+  })
+  .partial()
+
+const BioSchema = z.object({
+  mode: z.literal("bio"),
+  tone: z.string().min(1).max(32),
+  bioPrompts: BioPromptsSchema.optional(),
+})
+
+const RequestSchema = z.discriminatedUnion("mode", [ReplySchema, OpenerSchema, BioSchema])
 
 function buildReplySystemPrompt(params: {
   tone: string
@@ -46,10 +86,68 @@ function getTextContent(payload: unknown) {
   return message?.content?.trim() ?? ""
 }
 
+function getClientIp(request: Request) {
+  const forwarded = request.headers.get("x-forwarded-for")
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() || "unknown"
+  }
+  return request.headers.get("x-real-ip") || "unknown"
+}
+
+function checkRateLimit(key: string) {
+  const now = Date.now()
+  const entry = rateLimit.get(key)
+
+  if (!entry || now > entry.resetAt) {
+    rateLimit.set(key, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+      burstCount: 1,
+      burstResetAt: now + RATE_LIMIT_BURST_WINDOW_MS,
+    })
+    return { allowed: true, resetAt: now + RATE_LIMIT_WINDOW_MS }
+  }
+
+  if (now > entry.burstResetAt) {
+    entry.burstCount = 0
+    entry.burstResetAt = now + RATE_LIMIT_BURST_WINDOW_MS
+  }
+
+  if (entry.burstCount >= RATE_LIMIT_BURST_MAX || entry.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, resetAt: entry.resetAt }
+  }
+
+  entry.count += 1
+  entry.burstCount += 1
+  return { allowed: true, resetAt: entry.resetAt }
+}
+
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new Response("Unauthorized", { status: 401 })
+    }
+
+    const ip = getClientIp(request)
+    const userKey = (session.user?.email || session.user?.id || "anonymous").toString()
+    const rateLimitKey = `${userKey}:${ip}`
+    const rateLimitResult = checkRateLimit(rateLimitKey)
+    if (!rateLimitResult.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))
+      return new Response("Too many requests", {
+        status: 429,
+        headers: { "Retry-After": retryAfter.toString() },
+      })
+    }
+
     const body = await request.json()
-    const { mode, tone, conversation, profile, aboutMe, aboutThem, platform, bioPrompts } = body ?? {}
+    const parsed = RequestSchema.safeParse(body)
+    if (!parsed.success) {
+      return new Response("Invalid request.", { status: 400 })
+    }
+
+    const { mode, tone } = parsed.data
 
     if (!mode || !tone) {
       return new Response("Missing mode or tone.", { status: 400 })
@@ -59,24 +157,26 @@ export async function POST(request: Request) {
     let userMessage = ""
 
     if (mode === "reply") {
-      if (!conversation || typeof conversation !== "string") {
-        return new Response("Conversation text required.", { status: 400 })
-      }
+      const conversation = parsed.data.conversation
+      const aboutMe = parsed.data.aboutMe?.trim() || undefined
+      const aboutThem = parsed.data.aboutThem?.trim() || undefined
+      const platform = parsed.data.platform?.trim() || undefined
 
       systemPrompt = buildReplySystemPrompt({ tone, aboutMe, aboutThem, platform })
       userMessage = `Conversation:\n${conversation}`
     } else if (mode === "opener") {
-      if (!profile || typeof profile !== "string") {
-        return new Response("Profile text required.", { status: 400 })
-      }
-
+      const profile = parsed.data.profile
       systemPrompt = buildOpenerSystemPrompt({ tone, profile })
       userMessage = "Generate openers."
-    } else if (mode === "bio") {
-      systemPrompt = buildBioSystemPrompt({ style: tone, bioPrompts: bioPrompts ?? {} })
-      userMessage = "Write the bios."
     } else {
-      return new Response("Unsupported mode.", { status: 400 })
+      const prompts = parsed.data.bioPrompts ?? {}
+      const hasPrompt = Object.values(prompts).some((value) => value && value.trim().length > 0)
+      if (!hasPrompt) {
+        return new Response("Bio prompts required.", { status: 400 })
+      }
+
+      systemPrompt = buildBioSystemPrompt({ style: tone, bioPrompts: prompts })
+      userMessage = "Write the bios."
     }
 
     const response = await fetch(GROQ_API_URL, {
@@ -98,8 +198,7 @@ export async function POST(request: Request) {
 
     const payload = await response.json()
     if (!response.ok) {
-      const message = (payload as { error?: { message?: string } }).error?.message
-      return new Response(message || "Groq request failed.", { status: response.status })
+      return new Response("Groq request failed.", { status: response.status })
     }
 
     const text = getTextContent(payload)
