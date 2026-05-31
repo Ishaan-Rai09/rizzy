@@ -17,9 +17,11 @@ if (process.env.NODE_ENV !== "production") {
   global.mongoClient = client
 }
 
+let clientPromise: Promise<MongoClient> | null = null
+
 export async function getMongoClient() {
-  if (!client.topology) {
-    await client.connect()
+  if (!clientPromise) {
+    clientPromise = client.connect()
   }
-  return client
+  return clientPromise
 }
