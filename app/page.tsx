@@ -77,11 +77,8 @@ export default function LandingPage() {
             <span className="text-sm font-semibold tracking-[0.3em] text-muted-foreground">RIZZ AI</span>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Log in</Link>
-            </Button>
             <Button size="sm" asChild>
-              <Link href="/signup">Sign up</Link>
+              <Link href="/login">Sign in with Google</Link>
             </Button>
           </div>
         </header>
@@ -105,9 +102,6 @@ export default function LandingPage() {
                     Sign in to start
                     <ArrowRight className="size-4" />
                   </Link>
-                </Button>
-                <Button size="lg" variant="outline" className="bg-transparent" asChild>
-                  <Link href="/login">Continue with Google</Link>
                 </Button>
               </div>
               <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
@@ -236,10 +230,7 @@ export default function LandingPage() {
           <p className="text-muted-foreground">Jump into the generator or sign in to save your sessions.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button size="lg" asChild>
-              <Link href="/login">Start now</Link>
-            </Button>
-            <Button size="lg" variant="outline" className="bg-transparent" asChild>
-              <Link href="/signup">Sign up with Google</Link>
+              <Link href="/login">Sign in with Google</Link>
             </Button>
           </div>
         </div>
