@@ -19,6 +19,8 @@ import toast from "react-hot-toast"
 import { OpenerTab } from "@/components/OpenerTab"
 import { BioTab } from "@/components/BioTab"
 import { ArrowRight, Sparkles } from "lucide-react"
+import { User, ChevronDown, LogOut } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
 
 const toneOptions: ToneOption[] = [
   { label: "Funny", value: "Funny", emoji: "😂" },
@@ -32,6 +34,11 @@ const platformOptions = ["Tinder", "Hinge", "Bumble", "Instagram", "Other"]
 type TabKey = "reply" | "opener" | "bio"
 
 export function AppClient() {
+  const { data: session } = useSession()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const displayName = session?.user?.name || session?.user?.email || "You"
+
   const [activeTab, setActiveTab] = useState<TabKey>("reply")
   const [conversation, setConversation] = useState("")
   const [aboutMe, setAboutMe] = useState("")
@@ -126,6 +133,36 @@ export function AppClient() {
   return (
     <div className="min-h-screen bg-background">
       <div className="relative overflow-hidden">
+        {/* Top-right user menu */}
+        <div className="absolute top-6 right-6 z-20">
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((s) => !s)}
+              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-3 py-2 text-sm hover:shadow"
+              aria-label="User menu"
+            >
+              <User className="h-5 w-5 text-primary" />
+              <span className="max-w-[10rem] truncate text-sm text-foreground">{displayName}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {menuOpen ? (
+              <div className="absolute right-0 mt-2 w-56 rounded-lg border border-border/60 bg-card/90 p-3 text-sm shadow-lg">
+                <p className="mb-2 truncate text-foreground">Signed in as <span className="font-semibold">{displayName}</span></p>
+                <p className="mb-3 text-xs text-muted-foreground">Welcome back — you're all set to generate replies.</p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="inline-flex items-center gap-2 rounded-md bg-destructive px-3 py-2 text-xs font-medium text-destructive-foreground hover:opacity-90"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
         <div className="pointer-events-none absolute -top-40 left-10 h-72 w-72 rounded-full bg-primary/20 blur-[120px]" />
         <div className="pointer-events-none absolute top-20 right-10 h-80 w-80 rounded-full bg-primary/10 blur-[140px]" />
         <div className="container mx-auto px-6 py-14">
