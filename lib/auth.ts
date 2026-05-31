@@ -1,9 +1,9 @@
 import type { NextAuthOptions } from "next-auth"
 import Google from "next-auth/providers/google"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { prisma } from "@/lib/prisma"
+import { MongoDBAdapter } from "@next-auth/mongodb-adapter"
+import { getMongoClient } from "@/lib/mongodb"
 
-const requiredEnv = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "NEXTAUTH_SECRET"]
+const requiredEnv = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "NEXTAUTH_SECRET", "MONGODB_URI"]
 const missingEnv = requiredEnv.filter((key) => !process.env[key])
 
 if (missingEnv.length > 0) {
@@ -13,7 +13,7 @@ if (missingEnv.length > 0) {
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   useSecureCookies: process.env.NODE_ENV === "production",
-  adapter: PrismaAdapter(prisma),
+  adapter: MongoDBAdapter(getMongoClient()),
   session: { strategy: "database" },
   providers: [
     Google({
